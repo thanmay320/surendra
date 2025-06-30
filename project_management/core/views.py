@@ -4,7 +4,6 @@ from flask_login import  login_required
 core=Blueprint('core',__name__)
 
 @core.route('/')
-@login_required
 def index():
     projects = Project.query.all()  # fetch all projects from the database
     return render_template('index.html', projects=projects)
