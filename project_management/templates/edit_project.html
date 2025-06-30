@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+{% block content %}
+<head>
+  <title>Edit</title>
+</head>
+<div class="container py-5" style="max-width: 900px">
+  <h2 class="mb-4">Edit Project: {{ project.project_name }}</h2>
+
+  <form method="POST" enctype="multipart/form-data" id="project-form">
+    {{ form.hidden_tag() }}
+
+    {# -------- top-level error list -------- #}
+    {% if form.errors %}
+    <div class="alert alert-danger mb-4">
+      <h5 class="alert-heading">Please correct the following errors:</h5>
+      <ul class="mb-0">
+        {% for field, errors in form.errors.items() %}
+          {% for error in errors %}
+            <li>{{ form[field].label.text }}: {{ error }}</li>
+          {% endfor %}
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {# -------- basic fields -------- #}
+    <div class="mb-3">
+      {{ form.project_name.label(class="form-label") }}
+      {{ form.project_name(class="form-control" + (' is-invalid' if form.project_name.errors else '')) }}
+      {% for error in form.project_name.errors %}
+        <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+    </div>
+
+    <div class="mb-3">
+      {{ form.project_description.label(class="form-label") }}
+      {{ form.project_description(class="form-control" + (' is-invalid' if form.project_description.errors else ''), rows=4) }}
+      {% for error in form.project_description.errors %}
+        <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+    </div>
+
+    <div class="row mb-3">
+      <div class="col-md-6">
+        {{ form.project_price.label(class="form-label") }}
+        <div class="input-group">
+          <span class="input-group-text">$</span>
+          {{ form.project_price(class="form-control" + (' is-invalid' if form.project_price.errors else '')) }}
+        </div>
+        {% for error in form.project_price.errors %}
+          <div class="invalid-feedback">{{ error }}</div>
+        {% endfor %}
+      </div>
+      <div class="col-md-6">
+        {{ form.project_technologies.label(class="form-label") }}
+        {{ form.project_technologies(class="form-control" + (' is-invalid' if form.project_technologies.errors else '')) }}
+        <small class="form-text text-muted">Comma separated list</small>
+        {% for error in form.project_technologies.errors %}
+          <div class="invalid-feedback">{{ error }}</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# -------- thumbnail -------- #}
+    <div class="mb-4">
+      {{ form.project_thumbnail.label(class="form-label") }}
+      {{ form.project_thumbnail(class="form-control" + (' is-invalid' if form.project_thumbnail.errors else ''), onchange="previewThumbnail(this)") }}
+      {% for error in form.project_thumbnail.errors %}
+        <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+
+      <div class="mt-3 d-flex align-items-center">
+        {% if project.project_thumbnail %}
+        <div class="me-3">
+          <p class="mb-1 text-muted">Current thumbnail:</p>
+          <img src="data:image/jpeg;base64,{{ project.project_thumbnail|b64encode }}"
+               class="img-thumbnail" style="height:110px">
+        </div>
+        {% endif %}
+        <div id="thumbnail-preview" class="{% if not form.project_thumbnail.data %}d-none{% endif %}">
+          <p class="mb-1 text-muted">New thumbnail:</p>
+          <img id="thumbnail-preview-image" class="img-thumbnail" style="height:110px">
+        </div>
+      </div>
+    </div>
+
+    {# -------- gallery images -------- #}
+    <div class="mb-4">
+      {{ form.gallery_images.label(class="form-label") }}
+      {{ form.gallery_images(class="form-control" + (' is-invalid' if form.gallery_images.errors else '')) }}
+      <small class="form-text text-muted">Select multiple images (Ctrl+Click)</small>
+      {% for error in form.gallery_images.errors %}
+        <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+
+      {% if project.images %}
+      <div class="mt-3">
+        <p class="mb-1 text-muted">Current gallery images:</p>
+        <div class="d-flex flex-wrap gap-2">
+          {% for img in project.images %}
+          <div class="position-relative">
+            <img src="data:image/jpeg;base64,{{ img.image_data|b64encode }}"
+                 class="img-thumbnail" style="height:80px;width:80px;object-fit:cover">
+            <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 p-0 px-1"
+                    data-bs-toggle="modal" data-bs-target="#deleteImageModal"
+                    data-image-id="{{ img.image_id }}" data-image-name="Image #{{ loop.index }}">
+              &times;
+            </button>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    {# -------- project files -------- #}
+    <div class="mb-4">
+      {{ form.project_files.label(class="form-label") }}
+      {{ form.project_files(class="form-control" + (' is-invalid' if form.project_files.errors else '')) }}
+      {% for error in form.project_files.errors %}
+        <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+
+      {% if project.files %}
+      <div class="mt-3">
+        <p class="mb-1 text-muted">Current project files:</p>
+        <div class="list-group">
+          {% for f in project.files %}
+          <div class="list-group-item d-flex justify-content-between align-items-center">
+            <div><i class="bi bi-file-earmark me-2"></i>{{ f.file_name }}</div>
+            <div class="btn-group">
+              <a href="{{ url_for('project.download_file', project_id=project.project_id, file_id=f.file_id) }}"
+                 class="btn btn-sm btn-outline-primary"><i class="bi bi-download"></i></a>
+              <button type="button" class="btn btn-sm btn-outline-danger"
+                      data-bs-toggle="modal" data-bs-target="#deleteFileModal"
+                      data-file-id="{{ f.file_id }}" data-file-name="{{ f.file_name }}">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    {# -------- submit / cancel -------- #}
+    <div class="d-flex justify-content-end gap-3 mt-4 pt-2 border-top">
+      <a href="{{ url_for('project.projects') }}" class="btn btn-outline-secondary">Cancel</a>
+      <button type="submit" class="btn btn-success px-4">Save Changes</button>
+    </div>
+  </form>
+</div>
+
+{# ---------- delete image modal ---------- #}
+<div class="modal fade" id="deleteImageModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header">
+      <h5 class="modal-title">Confirm Delete</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    </div>
+    <div class="modal-body">
+      <p>Delete image: <span id="image-name" class="fw-bold"></span>?</p>
+      <p class="text-danger">This action cannot be undone.</p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+      <form id="delete-image-form" method="POST">
+        <button type="submit" class="btn btn-danger">Delete</button>
+      </form>
+    </div>
+  </div></div>
+</div>
+
+{# ---------- delete file modal ---------- #}
+<div class="modal fade" id="deleteFileModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header">
+      <h5 class="modal-title">Confirm Delete</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    </div>
+    <div class="modal-body">
+      <p>Delete file: <span id="file-name" class="fw-bold"></span>?</p>
+      <p class="text-danger">This action cannot be undone.</p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+      <form id="delete-file-form" method="POST">
+        <button type="submit" class="btn btn-danger">Delete</button>
+      </form>
+    </div>
+  </div></div>
+</div>
+
+{# ---------- scripts ---------- #}
+<script>
+// thumbnail live preview
+function previewThumbnail(input) {
+  const preview = document.getElementById('thumbnail-preview');
+  const img     = document.getElementById('thumbnail-preview-image');
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      preview.classList.remove('d-none');
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+  } else {
+    preview.classList.add('d-none');
+    img.src = '';
+  }
+}
+
+// set form actions inside delete modals
+document.addEventListener('DOMContentLoaded', () => {
+
+  // image delete
+  const imgModal = document.getElementById('deleteImageModal');
+  imgModal.addEventListener('show.bs.modal', event => {
+    const btn   = event.relatedTarget;
+    const id    = btn.getAttribute('data-image-id');
+    const name  = btn.getAttribute('data-image-name');
+    imgModal.querySelector('#image-name').textContent = name;
+    imgModal.querySelector('#delete-image-form').action =
+      `/project/{{ project.project_id }}/image/${id}/delete`;
+  });
+
+  // file delete
+  const fileModal = document.getElementById('deleteFileModal');
+  fileModal.addEventListener('show.bs.modal', event => {
+    const btn   = event.relatedTarget;
+    const id    = btn.getAttribute('data-file-id');
+    const name  = btn.getAttribute('data-file-name');
+    fileModal.querySelector('#file-name').textContent = name;
+    fileModal.querySelector('#delete-file-form').action =
+      `/project/{{ project.project_id }}/file/${id}/delete`;
+  });
+
+});
+</script>
+{% endblock %}
